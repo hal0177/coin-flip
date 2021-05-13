@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@chainlink/contracts": "^0.1.7",
     "@truffle/hdwallet-provider": "1.2.2",
     "dotenv": "^9.0.2"
   }

@@ -1,6 +1,11 @@
 
 const ABI = [
   {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -12,7 +17,7 @@ const ABI = [
       {
         "indexed": false,
         "internalType": "bool",
-        "name": "success",
+        "name": "result",
         "type": "bool"
       },
       {
@@ -26,22 +31,19 @@ const ABI = [
     "type": "event"
   },
   {
-    "constant": true,
-    "inputs": [],
-    "name": "betFunds",
-    "outputs": [
+    "anonymous": false,
+    "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
       }
     ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
+    "name": "FulfilledRandom",
+    "type": "event"
   },
   {
-    "constant": true,
     "inputs": [
       {
         "internalType": "address",
@@ -57,12 +59,10 @@ const ABI = [
         "type": "bool"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "constant": true,
     "inputs": [
       {
         "internalType": "address",
@@ -78,160 +78,67 @@ const ABI = [
         "type": "uint256"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "playerId",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "",
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "randomness",
+        "type": "uint256"
+      }
+    ],
+    "name": "rawFulfillRandomness",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "userProvidedSeed",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRandomNumber",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "requestId",
         "type": "bytes32"
       }
     ],
-    "name": "querySender",
-    "outputs": [
-      {
-        "internalType": "address payable",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "randomResult",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
     "inputs": [],
     "name": "setBet",
     "outputs": [],
-    "payable": true,
     "stateMutability": "payable",
     "type": "function"
   },
   {
-    "constant": false,
     "inputs": [],
-    "name": "update",
+    "name": "flipCoin",
     "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "checkStatus",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "status",
-        "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_myid",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "string",
-        "name": "_result",
-        "type": "string"
-      }
-    ],
-    "name": "__callback",
-    "outputs": [],
-    "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_queryId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "string",
-        "name": "_result",
-        "type": "string"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_proof",
-        "type": "bytes"
-      }
-    ],
-    "name": "__callback",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
     "inputs": [],
-    "name": "fundPool",
+    "name": "withdraw",
     "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]
 
-const Address = "0xA7069Acd9e0C4fB4Df2d8eBfA380f0Eef9d718da";
+const Address = "0xd5887700860F42b4B28F4723C842E43e5190Dd1e";

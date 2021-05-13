@@ -29,44 +29,51 @@ $(async () => {
       }
     });
 
-    const displayWin = async () => {
-      const checkEvent = await coinFlip.getPastEvents("Flipped", {filter: {player: user}});
-      console.log("e", checkEvent);
-      const winStatus = checkEvent[0].returnValues.success;
-      console.log(winStatus)
-      const winAmount = checkEvent[0].returnValues.amount;
 
-      if(winStatus) {
-        $("#display").text(`You won ${web3.utils.fromWei(winAmount)}`);
-        console.log("you won", web3.utils.fromWei(winAmount));
-      } else {
-        $("#display").text(`You lost. Try again!`);
-        console.log("you lost");
+    $("#withdraw").click(async () => {
+      if(withdrawable && !loading) {
+
+        coinFlip.once("Flipped", {filter: {player: user}}, (err, event) => {
+          console.log("flipped event", event);
+          if(event.returnValues.result) {
+            $("#display").text(`You won ${web3.utils.fromWei(event.returnValues.amount)}!`);
+            console.log("you won", web3.utils.fromWei(event.returnValues.amount));
+          }
+          else {
+            $("#display").text(`You lost. Try again!`);
+            console.log("you lost");
+          }
+          loading = false;
+          withdrawable = false;
+        });
+        
+        try {
+          loading = true;
+          $("#display").text("Loading result ...");
+          await coinFlip.methods.withdraw().send({from: user});
+        }
+        catch (error) {
+          console.log(error);
+        }
       }
+    });
 
-      loading = false;
-    }
 
     $("#flip").click(async () => {
       var bet = await coinFlip.methods.playerBet(user).call();
       console.log("bet: ", web3.utils.fromWei(bet));
       if(bet !== "0" && !loading) {
+        $("#display").text("Flipping the coin ...");
+
+        coinFlip.once("FulfilledRandom", {filter: {player: user}}, () => {
+          $("#display").text("Withdraw to see if you won!");
+          withdrawable = true;
+          loading = false;
+        });
+
         try {
           loading = true;
-          await coinFlip.methods.update().send({from: user, value: web3.utils.toWei("0.5", "ether")});
-          $("#display").text("Flipping the coin ...");
-
-          const checking = setInterval(async () => {
-            console.log("check");
-            var inProgress = await coinFlip.methods.checkStatus().call({from: user});
-            if(!inProgress) {
-              console.log("ready");
-              displayWin();
-              clearInterval(checking);
-            }
-          }, 1000);
-
-          
+          await coinFlip.methods.flipCoin().send({from: user});
         }
         catch (error) {
           console.log(error.message);

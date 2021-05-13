@@ -1,94 +1,109 @@
-pragma solidity >= 0.5.0 < 0.6.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
 
-import "./usingProvable.sol";
-
-
-contract CoinFlip is usingProvable {
-    
-    event Flipped(address indexed player, bool success, uint256 amount);
-
-    uint256 constant NUM_RANDOM_BYTES_REQUESTED = 1;
-    uint256 public betFunds;
-    
-    // Current bet from the player
-    mapping(address => uint256) public playerBet;
-    
-    // The sender of the query.
-    mapping(bytes32 => address payable) public querySender;
-    
-    // The last request from the player.
-    mapping(address => bytes32) public playerId;
-    
-    // Set to true when the query is made, set to false when result is returned.
-    mapping(address => bool) public inProgress;
-    
-    // Random true or false.
-    mapping(address => bool) public randomResult;
+import "@chainlink/contracts/src/v0.8/dev/VRFConsumerBase.sol";
 
 
-    function setBet() public payable {
-        require(msg.value != 0, "Cannot bet zero.");
-        playerBet[msg.sender] += msg.value;
+contract CoinFlip is VRFConsumerBase {
+
+    event Flipped(address indexed player, bool result, uint256 amount);
+    event FulfilledRandom(address indexed player);
+
+    modifier notInProgress(address _player) {
+        require(!inProgress[_player], "You already have an ongoing bet.");
+        _;
     }
 
+    modifier notZero(uint256 _bet) {
+        require(_bet != 0, "Bet amount canno be zero.");
+        _;
+    }
+    
+    mapping(address => uint256) public playerBet;
+    mapping(bytes32 => address) querySender;
+    mapping(address => bool) public inProgress;
+    mapping(address => bool) withdrawable;
+    mapping(address => uint256) private winAmount;
+    uint256 contractBal;
 
-    // Player "flips the coin" and makes a random number query.
-    function update() payable public {
-        require(msg.value >= 0.5 ether, "Not enough gas.");
-        uint256 QUERY_EXECUTION_DELAY = 0;
-        uint256 GAS_FOR_CALLBACK = 200000;
-        bytes32 queryId = provable_newRandomDSQuery(
-            QUERY_EXECUTION_DELAY,
-            NUM_RANDOM_BYTES_REQUESTED,
-            GAS_FOR_CALLBACK
-        );
-        playerId[msg.sender] = queryId;
-        querySender[queryId] = msg.sender;
+    bytes32 internal keyHash;
+    uint256 internal fee;
+    
+    
+    constructor() 
+        VRFConsumerBase(
+            0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9,
+            0xa36085F69e2889c224210F603D836748e7dC0088
+        )
+    {
+        keyHash = 0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4;
+        fee = 0.1 * 10 ** 18;
+    }
+    
+    function getRandomNumber(uint256 userProvidedSeed)
+        public
+        returns (bytes32 requestId)
+    {
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
+        return requestRandomness(keyHash, fee, userProvidedSeed);
+    }
+
+    function fulfillRandomness(bytes32 requestId, uint256 randomness)
+        internal
+        override
+    {
+        address player = querySender[requestId];
+        if(randomness % 2 == 1) {
+            uint256 maxWin = contractBal > playerBet[player] * 2 ? playerBet[player] * 2 : contractBal;
+            winAmount[player] = maxWin;
+        }
+        else {
+            winAmount[player] = 0;
+        }
+        inProgress[player] = false;
+        withdrawable[player] = true;
+        emit FulfilledRandom(player);
+    }
+
+    function setBet()
+        public
+        payable
+        notInProgress(msg.sender)
+        notZero(msg.value)
+    {
+        playerBet[msg.sender] = msg.value;
+        contractBal += msg.value;
+    }
+
+    function flipCoin()
+        public
+        notInProgress(msg.sender)
+        notZero(playerBet[msg.sender])
+    {
+        bytes32 id = getRandomNumber(uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))));
+        querySender[id] = msg.sender;
         inProgress[msg.sender] = true;
     }
 
-    
-    // Called by the frontend until it returns false when the query is resolved.
-    function checkStatus() public view returns(bool status) {
-        return inProgress[msg.sender];
-    }
-    
-    
-    // Random number gets set, calls sendWin.
-    function __callback(bytes32 _queryId, string memory _result, bytes memory _proof) public {
-        require(msg.sender == provable_cbAddress());
+    function withdraw()
+        public
+        notInProgress(msg.sender)
+    {
+        require(withdrawable[msg.sender], "Prize not yet ready to withdraw.");
+        if(winAmount[msg.sender] != 0) {
+            uint256 win = winAmount[msg.sender];
+            address payable player = payable(msg.sender);
+            player.transfer(win);
 
-        uint256 randomNumber = uint256(keccak256(abi.encodePacked(_result))) % 2;
-        bool result = randomNumber == 1;
-        
-        address payable player = querySender[_queryId];
-        randomResult[player] = result;
-        _sendWin(player);
-    }
-    
-    
-    // Check the random boolean and either sends the prize, or doesn't.
-    function _sendWin(address payable player) private {
-        require(playerBet[player] != 0, "No bet placed.");
-        uint256 maxWin = betFunds > playerBet[player] * 2 ? playerBet[player] * 2 : betFunds;
-
-        if(randomResult[player]) {
-            player.transfer(maxWin);
-            betFunds -= maxWin;
-            emit Flipped(player, true, maxWin);
+            contractBal -= win;
+            emit Flipped(msg.sender, true, win);
         }
         else {
-            emit Flipped(player, false, 0);
+            emit Flipped(msg.sender, false, 0);
         }
 
-        inProgress[player] = false;
-        playerBet[player] = 0;
-    }
-    
-    
-    // Deployer can send funds that can be won.
-    function fundPool() public payable {
-        require(msg.value != 0, "Cannot send zero.");
-        betFunds += msg.value;
+        withdrawable[msg.sender] = false;
+        playerBet[msg.sender] = 0;
+        winAmount[msg.sender] = 0;
     }
 }

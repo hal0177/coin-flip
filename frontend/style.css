@@ -91,6 +91,13 @@ body {
   background-image: linear-gradient(to bottom, #ffff00, #cccc00);
 }
 
+#withdraw {
+  outline: none;
+  cursor: pointer;
+  border-radius: 0.2rem;
+  background-image: linear-gradient(to bottom, #ffff00, #cccc00);
+}
+
 button:active {
   outline: 0.1rem solid #bbb;
 }
